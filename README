@@ -1,0 +1,79 @@
+em-Hue-lator
+------------
+
+This is a python implementation of a Philips Hue Bridge.
+
+This code is rather old. I was keeping it up to date with the Hue API until about a year ago. I am now publishing this code so it does not get lost. It works well enough for my purposes. I can use Alexa to control emulated lights that control other devices.
+
+I have to thank the authors of the following projects for without them this project would not exist!
+
+https://github.com/SteveyO/Hue-Emulator
+https://github.com/bwssytems/ha-bridge
+https://github.com/sagen/hue-upnp
+https://github.com/falk0069/hue-upnp
+
+Design:
+
+The main HueServer object is built using Flask for simplicity and expediency. The HueServer object instantiates a HueBridge object and a Flask app that routes to methods exposed by the HueBridge object.
+
+The HueBridge object emulates a V1 bridge running firmware 01038802 / 1.16.0. I have not updated it since and I do not have V2 bridge to emulate. The HueBridge object maintains the light and group inventory. Nearly the entire config, lights, and groups API's are emulated; only the delete commands are currently circumvented.  I had plans to add support for the scenes API but lost interest. I had no plans to emulate sensors, schedules, and rules.
+
+In its current state, the emulated bridge works correctly with the official Philips Hue mobile apps on both Android and iOS and Alexa. The emulated bridge will respond correctly to UPnP discovery. The bridge discovery only works if the HueServer is listening on port 80 which is the default and unfortunately requires root priviledges.
+
+I had to mimic the API largely using experimention against a real hub. The official documentation was not entirely accurate when I started this project, especially for the errors. The official documentation has improved much since then though.
+
+I used a test script that curl'ed a battery of API calls to an actual Hue bridge to validate the responses, spending extra effort on error conditions such as incorrect urls, incorrect parameters, etc. The same test script was then executed against the emulated bridge. After that was satisfictory, I tested using the official app running on an Android 4.4.4 Genymotion virtual machine.  After I was confident it worked, I began testing with the official app running on my mobile devices which were also paired to my real hub.
+
+API:
+
+In addition to the officale Hue API, there is internal API that exposes the internal state of objects and allows additional configuration.
+
+http://<ip>/internal/config
+http://<ip>/internal/lights/<optional:id>
+http://<ip>/internal/groups/<optional:id>
+
+The internal API can be used to add lights to the emulated bridge:
+
+http://<ip>/internal/lights
+POST data: { "name": "string", "modelid": "string" }
+
+The following Gen 1 bulbs are emulated as that's all I had at the time:
+  'LWB004' : A19 Lux dimmable bulb
+  'LCT001' : A19 extended color bulb
+  'LCT002' : BR30 extended color bulb
+  'LST001' : Lightstrip color
+
+The modelid determines if the emulated bulb inherits a dimmable or color state object. If not supplied, or if a different string is supplied, the default model is the LWB004. The modelid cannot be change after the light object is instantiated. You can supply a blank object '{}' to add a dimmable bulb with a random name.  As there's no difference between the LCT models other than the shape of the bulb, there also is an internal property _type which accepts 'dimmable' or 'color' and will instantiate an LWB004 or LCT001 bulb respectively.
+
+The internal API can also used to attach an external command to a light:
+
+http://<ip>/internal/lights/<id>/command
+PUT { "external": [ "/path/to/command", "command-arg-1", "command-arg-2", ... "command-arg-n" ] }
+
+The command arguments are useful when the external command requires a command line argument such as the IP address of what you're trying to control. The command executed must accept a bulb id, an action string ("on", "bri", or "color") and numeric arguements for the state. The possible options are:
+
+<id> "on" "1"            --> turns <id> on
+<id> "on" "0"            --> turns <id> off
+<id> "bri" <brightness>  --> sets <id> to brightness, range 1-254
+<id> "color" <R> <G> <B> --> sets <id> to color [R,G,B], each range 0-255
+
+Using this, an emulated bulb can be used to control any smart device with a simple wrapper script. The examples directory contains some working although admittedly crude interface scripts that rely on the following projects:
+
+https://github.com/beville/flux_led
+https://github.com/joaquincasares/python-wifi-leds/
+https://github.com/wendlers/ediplug-py/
+https://github.com/kraqh3d/python-lumen
+
+I have successfully linked emulated lights to MagicLED bulbs and light strips, Tabu Lumen bluetooth strips, and Edimax Smartplugs. Conceptually, anything that has an open API which provides an on/off function could be linked to the default dimmable white light. While there is a simple on/off Zigbee light mentioned in the developer docs, I never had one to emulate.
+
+The examples/magic.py script can control a bulb or light strip attached to a MagicLED controller.  Add it to an emulated light as follows:
+
+curl -s -X PUT -H 'Content-Type: application/json' -d '{ "external": [ "/path/to/examples/magic.py", "controller-ip-address" ] }' http://<emu-bridge-ip>/internal/lights/<id>/command
+
+The internal API can also be used to proxy commands to a bulb on a true Hue bridge. The proxy parameter links the emulated bulb to a real bulb. When an emulated bulb is a proxy for a real bulb, all state changes to the emulated bulb are sent unaltered directly to the linked real bulb. The bridge IP address, username, and real light id are required.
+
+http://<ip>/intenral/lights/<id>/command
+PUT { "proxy": [ "Bridge IP address", "username", "light ID" ] }
+
+The emulated bridge will automatically accept new users.  Once its identified, it's best to dump the config from internal API to capture the new user and hard code it into the main program. 
+
