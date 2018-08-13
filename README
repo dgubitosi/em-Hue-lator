@@ -24,7 +24,7 @@ The main HueServer object is built using Flask for simplicity and expediency. Th
 
 The HueBridge object emulates a V1 bridge running firmware 01038802 / 1.16.0. I have not updated it since and I do not have V2 bridge to emulate. The HueBridge object maintains the light and group inventory. Nearly the entire config, lights, and groups API's are emulated; only the delete commands are currently circumvented.  I had plans to add support for the scenes API but lost interest. I had no plans to emulate sensors, schedules, and rules.
 
-In its current state, the emulated bridge works correctly with the official Philips Hue mobile apps on both Android and iOS and Alexa. The emulated bridge will respond correctly to UPnP discovery. The bridge discovery only works if the HueServer is listening on port 80 which is the default and unfortunately requires root priviledges.
+In its current state, the emulated bridge works correctly with the official Philips Hue mobile apps on both Android and iOS and Alexa. The emulated bridge will respond correctly to UPnP discovery. The bridge discovery only works if the HueServer is listening on port 80 which is the default and unfortunately requires root priviledges. (The official Philips Hue mobile app assumes the bridge is listening in port 80, totally ingnoring the LOCATION set in the SSDP message.)
 
 I had to mimic the API largely using experimention against a real hub. The official documentation was not entirely accurate when I started this project, especially for the errors. The official documentation has improved much since then though.
 
