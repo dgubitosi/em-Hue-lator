@@ -43,6 +43,19 @@ def xy_to_rgb(xy, bri):
     else:
         b = 1.055 * math.pow(b, i) - 0.055
 
+    # clamp any negative values to zero
+    if r < 0: r = 0
+    if g < 0: g = 0
+    if b < 0: b = 0
+
+    # https://stackoverflow.com/questions/16052933/convert-philips-hue-xy-values-to-hex
+    # scale all values if the max is greater than 1
+    i = max(r, g, b)
+    if i > 1:
+        r /= i
+        g /= i
+        b /= i
+
     # scale from 0.0:1.0 to 0:255
     r = int(r * 255)
     g = int(g * 255)
@@ -120,3 +133,4 @@ def ct_to_rgb(ct, bri):
     b = max(0, min(b, 255))
 
     return [r, g, b]
+
